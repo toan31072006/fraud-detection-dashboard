@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import os
+from streamlit_option_menu import option_menu  # <-- Thư viện mới tạo menu xịn
 
 # --- 1. PAGE CONFIGURATION ---
 st.set_page_config(
@@ -21,10 +22,7 @@ st.markdown("""
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
     
-    /* Ẩn header và footer mặc định */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    /* ĐÃ XÓA CODE ẨN HEADER ĐỂ HIỆN LẠI THANH CÔNG CỤ (DEPLOY / SETTINGS) CỦA STREAMLIT */
 
     /* Tùy chỉnh Sidebar */
     [data-testid="stSidebar"] {
@@ -80,7 +78,7 @@ def apply_pro_theme(fig):
         template="plotly_white",
         font=dict(family="Inter, sans-serif", size=12, color="#475569"),
         margin=dict(l=20, r=20, t=50, b=20),
-        hovermode="x unified", # Trải nghiệm rê chuột xịn xò
+        hovermode="x unified",
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         title_font=dict(size=16, color="#1E293B", family="Inter, sans-serif"),
@@ -104,41 +102,32 @@ def load_data():
     
     num_cols = df.select_dtypes(include=['float64', 'int64']).columns
     df[num_cols] = df[num_cols].fillna(0)
+            
     return df
 
 df = load_data()
 
 if not df.empty:
-    # --- XỬ LÝ SESSION STATE CHO MENU ĐIỀU HƯỚNG ---
-    if 'current_page' not in st.session_state:
-        st.session_state.current_page = "Industry Overview"
-
-    def navigate_to(page_name):
-        st.session_state.current_page = page_name
-
     # --- 3. SIDEBAR NAVIGATION & CONTROLS ---
     with st.sidebar:
         st.image("https://cdn-icons-png.flaticon.com/512/3135/3135673.png", width=60)
         st.markdown("<h2 style='font-size: 1.2rem;'>RISK PORTAL</h2>", unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # Tạo Menu bằng Buttons thực thụ
-        st.markdown("<p style='color: #64748B; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;'>MAIN MENU</p>", unsafe_allow_html=True)
-        
-        menu_items = {
-            "Industry Overview": "📊",
-            "Red Flag Identification": "⚠️",
-            "Company Lookup": "🏢",
-            "Competitor Comparison": "⚖️",
-            "In-depth Analysis": "🔬",
-            "Multi-dimensional View": "🌐"
-        }
-        
-        for page_name, icon in menu_items.items():
-            is_active = st.session_state.current_page == page_name
-            # Nếu đang chọn thì nút màu xanh đậm (primary), không thì xám nhạt (secondary)
-            btn_type = "primary" if is_active else "secondary"
-            st.button(f"{icon}  {page_name}", key=f"btn_{page_name}", type=btn_type, use_container_width=True, on_click=navigate_to, args=(page_name,))
+        # --- THANH CÔNG CỤ MENU BÊN TRÁI HIỆN ĐẠI ---
+        page = option_menu(
+            menu_title="MAIN MENU", 
+            options=["Industry Overview", "Red Flag Identification", "Company Lookup", "Competitor Comparison", "In-depth Analysis", "Multi-dimensional View"],
+            icons=["bar-chart", "exclamation-triangle", "building", "scales", "microscope", "globe"], 
+            menu_icon="cast", 
+            default_index=0,
+            styles={
+                "container": {"padding": "0!important", "background-color": "#ffffff", "border": "none"},
+                "icon": {"color": "#64748b", "font-size": "16px"}, 
+                "nav-link": {"font-size": "14px", "text-align": "left", "margin":"5px", "color": "#0f172a", "font-weight": "500"},
+                "nav-link-selected": {"background-color": "#2563EB", "color": "white", "font-weight": "600"},
+            }
+        )
         
         st.markdown("---")
         st.markdown("<p style='color: #64748B; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;'>FILTERS & CONTROLS</p>", unsafe_allow_html=True)
@@ -164,12 +153,9 @@ if not df.empty:
     if not high_risk_df.empty:
         st.warning(f"SYSTEM ALERT: {high_risk_df['Symbol'].nunique()} companies exceeded the fraud threshold of {fraud_threshold}.", icon="🚨")
 
-    st.title(f"{st.session_state.current_page}")
+    st.title(f"{page}")
     st.caption(f"Showing analytical data from **{selected_years[0]}** to **{selected_years[1]}**")
     st.markdown("<br>", unsafe_allow_html=True)
-
-    # Lấy trang hiện tại
-    page = st.session_state.current_page
 
     # ====================================================
     # PAGE 1: INDUSTRY OVERVIEW
