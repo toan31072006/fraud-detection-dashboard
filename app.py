@@ -7,7 +7,7 @@ from streamlit_option_menu import option_menu
 
 # --- 1. PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="Comprehensive Financial Surveillance Dashboard",
+    page_title="Comprehensive Financial Surveillance",
     page_icon="💠",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -119,11 +119,16 @@ df = load_data()
 if not df.empty:
     # --- 3. SIDEBAR NAVIGATION & CONTROLS ---
     with st.sidebar:
-        st.markdown("<h3 style='text-align: center; color: #2563EB;'>COMPREHENSIVE FINANCIAL SURVEILLANCE</h3>", unsafe_allow_html=True)
-        st.markdown("<br>", unsafe_allow_html=True)
+        # MENU CHÍNH TO, RÕ RÀNG Ở TRÊN CÙNG
+        st.markdown("""
+            <div style='text-align: center; padding-bottom: 10px;'>
+                <h1 style='color: #1E293B; font-size: 2.2rem; font-weight: 900; margin-bottom: 0px;'>☰ MAIN MENU</h1>
+                <p style='color: #64748B; font-size: 0.95rem; margin-top: 0px;'>Navigation & Controls</p>
+            </div>
+        """, unsafe_allow_html=True)
         
         page = option_menu(
-            menu_title="MAIN MENU", 
+            menu_title=None, # Đã có chữ MAIN MENU to ở trên nên ẩn cái này đi
             options=["Industry Overview", "Red Flag Identification", "Company Lookup", "Competitor Comparison", "In-depth Analysis", "Multi-dimensional View"],
             icons=["bar-chart-fill", "flag-fill", "buildings-fill", "diagram-3-fill", "cpu-fill", "globe2"], 
             menu_icon="cast", 
@@ -131,14 +136,14 @@ if not df.empty:
             styles={
                 "container": {"padding": "0!important", "background-color": "transparent", "border": "none"},
                 "icon": {"color": "#64748B", "font-size": "16px"}, 
-                "nav-link": {"font-size": "14px", "text-align": "left", "margin":"5px", "color": "#475569", "font-weight": "500", "border-radius":"8px"},
+                "nav-link": {"font-size": "14px", "text-align": "left", "margin":"5px 0px", "color": "#475569", "font-weight": "600", "border-radius":"8px"},
                 "nav-link:hover": {"background-color": "#F1F5F9"},
-                "nav-link-selected": {"background-color": "#2563EB", "color": "white", "font-weight": "600"},
+                "nav-link-selected": {"background-color": "#2563EB", "color": "white", "font-weight": "700"},
             }
         )
         
         st.markdown("---")
-        st.markdown("<p style='color: #64748B; font-size: 0.8rem; font-weight: 700; margin-bottom: 5px;'>FILTERS & CONTROLS</p>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #1E293B; font-size: 1.1rem; font-weight: 800; margin-bottom: 15px;'>⚙️ DATA FILTERS</p>", unsafe_allow_html=True)
         
         min_year, max_year = int(df['Year'].min()), int(df['Year'].max())
         selected_years = st.slider("Period (Years):", min_year, max_year, (min_year, max_year))
@@ -146,6 +151,8 @@ if not df.empty:
         risk_levels = sorted(df['risk_level'].dropna().unique().tolist())
         selected_risks = st.multiselect("Risk Levels:", options=risk_levels, default=risk_levels)
 
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<p style='color: #1E293B; font-size: 1.1rem; font-weight: 800; margin-bottom: 15px;'>⚠️ ALERT SETTINGS</p>", unsafe_allow_html=True)
         fraud_threshold = st.slider("Fraud Score Threshold:", 0.0, 5.0, 1.5, 0.1)
 
     # Filter Data
@@ -162,7 +169,7 @@ if not df.empty:
         st.error(f"🚨 **SYSTEM ALERT:** {high_risk_df['Symbol'].nunique()} companies exceeded the fraud threshold of {fraud_threshold}.")
 
     st.markdown("<h1 style='color: #1E293B; margin-bottom: 0;'>Comprehensive Financial Surveillance Dashboard</h1>", unsafe_allow_html=True)
-    st.markdown(f"<h3 style='color: #64748B; margin-top: 0;'>{page}</h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='color: #2563EB; margin-top: 5px; font-weight: 600;'>{page}</h3>", unsafe_allow_html=True)
     st.caption(f"Showing analytical data from **{selected_years[0]}** to **{selected_years[1]}**")
     st.markdown("<br>", unsafe_allow_html=True)
 
