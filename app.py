@@ -34,12 +34,11 @@ def load_data():
         
     df = pd.read_csv(file_path)
     
-    # Xử lý các cột dữ liệu
     if 'Year' in df.columns:
         df['Year'] = df['Year'].astype(int)
     
-    # Fill NA cho các cột tài chính cơ bản để tránh lỗi biểu đồ
-    cols_to_fill = ['Rev', 'Net_Profit', 'Leverage', 'fraud_score', 'Total_Assets', 'Total_Liabilities', 'Operating_Cash_Flow']
+    # Fill NA cho các cột tài chính cơ bản
+    cols_to_fill = ['Rev', 'COGS', 'Gross_Profit', 'Net_Profit', 'Leverage', 'fraud_score', 'Total_Assets', 'Total_Liabilities', 'Operating_Cash_Flow']
     for col in cols_to_fill:
         if col in df.columns:
             df[col] = df[col].fillna(0)
@@ -56,11 +55,9 @@ if not df.empty:
         st.markdown("---")
         
         st.header("1. Lọc Dữ Liệu Chung")
-        # Lọc theo Năm
         min_year, max_year = int(df['Year'].min()), int(df['Year'].max())
         selected_years = st.slider("Giai Đoạn (Năm):", min_year, max_year, (min_year, max_year))
         
-        # Lọc theo Mức Độ Rủi Ro
         risk_levels = sorted(df['risk_level'].dropna().unique().tolist())
         selected_risks = st.multiselect("Mức Độ Rủi Ro:", options=risk_levels, default=risk_levels)
 
@@ -88,13 +85,14 @@ if not df.empty:
     else:
         st.success(f"✅ **AN TOÀN:** Hiện tại không có công ty nào vượt ngưỡng rủi ro đã chọn.")
 
-    # --- TẠO TABS ĐỂ GIAO DIỆN GỌN GÀNG HƠN ---
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    # --- TẠO TABS ---
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "📊 Tổng Quan Ngành", 
         "🚩 Nhận Diện Cảnh Báo", 
         "🏢 Tra Cứu Doanh Nghiệp",
         "⚖️ So Sánh Đối Thủ",
-        "🧠 Phân Tích Chuyên Sâu"
+        "🧠 Phân Tích Chuyên Sâu",
+        "🌌 Bức Tranh Đa Chiều" # <- TAB MỚI Ở ĐÂY
     ])
 
     # ====================================================
@@ -107,7 +105,6 @@ if not df.empty:
         c3.metric("Số Lần Bị Đánh Dấu", f"{df_filtered['Target_Fraud'].sum()} vụ")
         avg_rev = df_filtered['Rev'].mean() / 1e9 if 'Rev' in df_filtered.columns else 0
         c4.metric("Doanh Thu TB", f"{avg_rev:,.0f} Tỷ VNĐ")
-
         st.markdown("<br>", unsafe_allow_html=True)
 
         col1, col2 = st.columns([2, 1])
@@ -116,7 +113,7 @@ if not df.empty:
             yearly_stats = df_filtered.groupby('Year')['fraud_score'].mean().reset_index()
             fig_trend = px.line(yearly_stats, x='Year', y='fraud_score', markers=True, 
                                 line_shape='spline', color_discrete_sequence=['#ef4444'])
-            fig_trend.add_hline(y=fraud_threshold, line_dash="dash", line_color="orange", annotation_text=f"Ngưỡng ({fraud_threshold})")
+            fig_trend.add_hline(y=fraud_threshold, line_dash="dash", line_color="orange")
             fig_trend.update_layout(xaxis_title="Năm", yaxis_title="Điểm Gian Lận TB", height=350, margin=dict(l=0, r=0, t=30, b=0))
             fig_trend.update_xaxes(dtick=1)
             st.plotly_chart(fig_trend, use_container_width=True)
@@ -129,14 +126,12 @@ if not df.empty:
             fig_pie = px.pie(risk_counts, values='count', names='risk_level', hole=0.4, 
                              color='risk_level', color_discrete_map=color_map)
             fig_pie.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0), showlegend=True)
-            fig_pie.update_traces(textposition='inside', textinfo='percent+label')
             st.plotly_chart(fig_pie, use_container_width=True)
 
         st.subheader("🔥 Top 10 Doanh Nghiệp Rủi Ro Nhất")
         top_10 = df_filtered.sort_values(by='fraud_score', ascending=False).drop_duplicates(subset=['Symbol']).head(10)
-        fig_bar = px.bar(top_10, x='Symbol', y='fraud_score', color='fraud_score', 
-                         color_continuous_scale='Reds', text_auto='.2f')
-        fig_bar.update_layout(xaxis_title="Mã Công Ty", yaxis_title="Điểm Gian Lận", height=350, margin=dict(l=0, r=0, t=30, b=0))
+        fig_bar = px.bar(top_10, x='Symbol', y='fraud_score', color='fraud_score', color_continuous_scale='Reds', text_auto='.2f')
+        fig_bar.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0))
         st.plotly_chart(fig_bar, use_container_width=True)
 
     # ====================================================
@@ -150,25 +145,15 @@ if not df.empty:
             if flag_cols:
                 flag_sums = df_filtered[flag_cols].sum().sort_values(ascending=True).reset_index()
                 flag_sums.columns = ['Loại Cảnh Báo', 'Số Lần Xuất Hiện']
-                fig_flags = px.bar(flag_sums, x='Số Lần Xuất Hiện', y='Loại Cảnh Báo', orientation='h',
-                                   color='Số Lần Xuất Hiện', color_continuous_scale='Sunsetdark')
+                fig_flags = px.bar(flag_sums, x='Số Lần Xuất Hiện', y='Loại Cảnh Báo', orientation='h', color='Số Lần Xuất Hiện', color_continuous_scale='Sunsetdark')
                 fig_flags.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0))
                 st.plotly_chart(fig_flags, use_container_width=True)
 
         with col4:
             st.subheader("⚖️ Chỉ Số Đòn Bẩy (Leverage) vs Rủi Ro")
-            fig_box = px.box(df_filtered, x='Target_Fraud', y='Leverage', color='Target_Fraud', 
-                             color_discrete_sequence=['#10b981', '#ef4444'])
-            fig_box.update_layout(xaxis_title="Có Gian Lận (0 = Không, 1 = Có)", yaxis_title="Đòn Bẩy Tài Chính", height=400, margin=dict(l=0, r=0, t=30, b=0))
+            fig_box = px.box(df_filtered, x='Target_Fraud', y='Leverage', color='Target_Fraud', color_discrete_sequence=['#10b981', '#ef4444'])
+            fig_box.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0))
             st.plotly_chart(fig_box, use_container_width=True)
-
-        st.subheader("💰 Tương Quan Doanh Thu & Lợi Nhuận (Theo Fraud Score)")
-        fig_scatter = px.scatter(df_filtered, x='Rev', y='Net_Profit', color='fraud_score', 
-                                 size='Total_Assets' if 'Total_Assets' in df_filtered.columns else None,
-                                 hover_name='Symbol', hover_data=['Year', 'risk_level'],
-                                 color_continuous_scale='RdYlBu_r')
-        fig_scatter.update_layout(xaxis_title="Doanh Thu (VND)", yaxis_title="Lợi Nhuận Thuần (VND)", height=450)
-        st.plotly_chart(fig_scatter, use_container_width=True)
 
     # ====================================================
     # TAB 3: TRA CỨU DOANH NGHIỆP CỤ THỂ
@@ -176,109 +161,103 @@ if not df.empty:
     with tab3:
         selected_symbol = st.selectbox("🔍 Nhập hoặc Chọn Mã Công Ty (Symbol):", all_symbols, key='tab3_search')
         df_company = df[df['Symbol'] == selected_symbol].sort_values(by='Year')
-        
         if not df_company.empty:
-            latest_year = df_company['Year'].max()
-            latest_data = df_company[df_company['Year'] == latest_year].iloc[0]
-            
-            # KPI cho doanh nghiệp
-            cc1, cc2, cc3, cc4 = st.columns(4)
-            cc1.info(f"**Năm cập nhật:** {latest_year}")
-            cc2.warning(f"**Rủi ro hiện tại:** {latest_data['risk_level']}")
-            cc3.error(f"**Fraud Score:** {latest_data['fraud_score']:.2f}")
-            ocf = latest_data['Operating_Cash_Flow'] / 1e9 if 'Operating_Cash_Flow' in latest_data else 0
-            cc4.success(f"**Dòng tiền HĐKD:** {ocf:,.1f} Tỷ")
-            
-            st.markdown("---")
-            
-            # Biểu đồ Tài sản vs Nợ và Lợi nhuận vs Rủi ro
-            r1, r2 = st.columns(2)
-            with r1:
-                fig_combo = go.Figure()
-                fig_combo.add_trace(go.Bar(x=df_company['Year'], y=df_company['Net_Profit'], name='Lợi Nhuận Thuần', marker_color='#3b82f6', yaxis='y1'))
-                fig_combo.add_trace(go.Scatter(x=df_company['Year'], y=df_company['fraud_score'], name='Fraud Score', mode='lines+markers', marker=dict(color='#ef4444', size=10), yaxis='y2'))
-                fig_combo.update_layout(
-                    title="Lợi Nhuận vs Điểm Gian Lận", xaxis=dict(dtick=1),
-                    yaxis=dict(title="VND", side='left'), yaxis2=dict(title="Score", side='right', overlaying='y', range=[0, 5]),
-                    height=350, margin=dict(l=0, r=0, t=30, b=0), legend=dict(x=0, y=1.1, orientation='h')
-                )
-                st.plotly_chart(fig_combo, use_container_width=True)
-                
-            with r2:
-                if 'Total_Assets' in df_company.columns and 'Total_Liabilities' in df_company.columns:
-                    fig_struct = go.Figure()
-                    fig_struct.add_trace(go.Bar(x=df_company['Year'], y=df_company['Total_Assets'], name='Tổng Tài Sản', marker_color='#10b981'))
-                    fig_struct.add_trace(go.Bar(x=df_company['Year'], y=df_company['Total_Liabilities'], name='Tổng Nợ Phải Trả', marker_color='#f59e0b'))
-                    fig_struct.update_layout(title="Cấu Trúc Tài Sản & Nợ", xaxis=dict(dtick=1), barmode='group', height=350, margin=dict(l=0, r=0, t=30, b=0), legend=dict(x=0, y=1.1, orientation='h'))
-                    st.plotly_chart(fig_struct, use_container_width=True)
-
-            st.subheader(f"📄 Số Liệu Chi Tiết Của {selected_symbol}")
-            cols_to_show = ['Year', 'Rev', 'Gross_Profit', 'Net_Profit', 'Total_Assets', 'Total_Liabilities', 'Leverage', 'fraud_score', 'risk_level']
-            cols_to_show = [c for c in cols_to_show if c in df_company.columns]
-            st.dataframe(df_company[cols_to_show].style.format({"Rev": "{:,.0f}", "Gross_Profit": "{:,.0f}", "Net_Profit": "{:,.0f}", "Total_Assets": "{:,.0f}", "Total_Liabilities": "{:,.0f}", "fraud_score": "{:.2f}"}), use_container_width=True, hide_index=True)
+            st.dataframe(df_company.style.format(precision=2), use_container_width=True)
 
     # ====================================================
-    # TAB 4: SO SÁNH ĐỐI THỦ (TÍNH NĂNG MỚI)
+    # TAB 4: SO SÁNH ĐỐI THỦ
     # ====================================================
     with tab4:
-        st.markdown("Chọn từ 2 doanh nghiệp trở lên để so sánh trực tiếp sức khỏe tài chính và mức độ rủi ro.")
-        default_compare = all_symbols[:2] if len(all_symbols) >= 2 else all_symbols
-        selected_compare = st.multiselect("🤝 Chọn các mã công ty để so sánh:", all_symbols, default=default_compare)
-        
+        selected_compare = st.multiselect("🤝 Chọn các mã công ty để so sánh:", all_symbols, default=all_symbols[:2] if len(all_symbols) >= 2 else all_symbols)
         if selected_compare:
             df_comp = df_filtered[df_filtered['Symbol'].isin(selected_compare)].sort_values(by='Year')
-            
-            comp1, comp2 = st.columns(2)
-            with comp1:
-                st.subheader("So Sánh Điểm Gian Lận (Fraud Score)")
-                fig_comp_score = px.line(df_comp, x='Year', y='fraud_score', color='Symbol', markers=True, line_shape='spline')
-                fig_comp_score.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0))
-                fig_comp_score.update_xaxes(dtick=1)
-                st.plotly_chart(fig_comp_score, use_container_width=True)
-                
-            with comp2:
-                st.subheader("So Sánh Lợi Nhuận Thuần")
-                fig_comp_profit = px.bar(df_comp, x='Year', y='Net_Profit', color='Symbol', barmode='group')
-                fig_comp_profit.update_layout(height=350, margin=dict(l=0, r=0, t=30, b=0))
-                fig_comp_profit.update_xaxes(dtick=1)
-                st.plotly_chart(fig_comp_profit, use_container_width=True)
+            fig_comp_score = px.line(df_comp, x='Year', y='fraud_score', color='Symbol', markers=True)
+            st.plotly_chart(fig_comp_score, use_container_width=True)
 
     # ====================================================
-    # TAB 5: PHÂN TÍCH CHUYÊN Sâu (TÍNH NĂNG MỚI)
+    # TAB 5: PHÂN TÍCH CHUYÊN Sâu
     # ====================================================
     with tab5:
-        st.markdown("Góc nhìn dành cho chuyên gia: Phân tích các mối tương quan toán học giữa các chỉ số tài chính.")
-        
-        st.subheader("🧮 Ma Trận Tương Quan (Correlation Heatmap)")
-        st.caption("Màu đỏ đậm/xanh đậm thể hiện sự tương quan mạnh mẽ giữa 2 chỉ số. (Ví dụ: Nợ càng cao thì Điểm gian lận càng cao?)")
-        
-        # Chọn các cột số quan trọng để làm ma trận
         corr_cols = ['fraud_score', 'Target_Fraud', 'Rev', 'Net_Profit', 'Total_Assets', 'Total_Liabilities', 'Leverage', 'Operating_Cash_Flow']
         corr_cols_exist = [c for c in corr_cols if c in df_filtered.columns]
-        
         if len(corr_cols_exist) > 1:
-            # Tính toán ma trận
             corr_matrix = df_filtered[corr_cols_exist].corr().round(2)
-            fig_corr = px.imshow(
-                corr_matrix, text_auto=True, aspect="auto", 
-                color_continuous_scale='RdBu_r', zmin=-1, zmax=1
-            )
-            fig_corr.update_layout(height=500, margin=dict(l=0, r=0, t=30, b=0))
+            fig_corr = px.imshow(corr_matrix, text_auto=True, aspect="auto", color_continuous_scale='RdBu_r', zmin=-1, zmax=1)
             st.plotly_chart(fig_corr, use_container_width=True)
-        else:
-            st.info("Không đủ dữ liệu cột số để vẽ ma trận tương quan.")
-            
-        st.markdown("---")
-        st.subheader("🗺️ Phân Bổ Tài Sản & Nợ (Năm Mới Nhất)")
-        max_yr = df_filtered['Year'].max()
-        df_yr = df_filtered[df_filtered['Year'] == max_yr].dropna(subset=['Total_Assets', 'Total_Liabilities'])
-        
-        if not df_yr.empty:
-            fig_scatter_yr = px.scatter(
-                df_yr, x='Total_Assets', y='Total_Liabilities', 
-                color='risk_level', size='fraud_score', hover_name='Symbol',
-                color_discrete_map={'HighRisk': '#ef4444', 'MediumRisk': '#f59e0b', 'LowRisk': '#10b981', 'Safe': '#3b82f6'},
-                labels={"Total_Assets": "Tổng Tài Sản (VND)", "Total_Liabilities": "Tổng Nợ Phải Trả (VND)"}
-            )
-            fig_scatter_yr.update_layout(height=450)
-            st.plotly_chart(fig_scatter_yr, use_container_width=True)
+
+    # ====================================================
+    # TAB 6: 🌌 BỨC TRANH ĐA CHIỀU (MEGA DASHBOARD)
+    # ====================================================
+    with tab6:
+        st.markdown("### 🔭 Lưới Phân Tích Đa Dữ Liệu")
+        st.markdown("Cung cấp một loạt các biểu đồ xếp san sát nhau để bạn có cái nhìn bao quát về cả doanh thu, dòng tiền, nợ và tỷ trọng rủi ro.")
+
+        # --- HÀNG 1: Dịch chuyển rủi ro & Phân phối điểm ---
+        r1_c1, r1_c2 = st.columns(2)
+        with r1_c1:
+            # Stacked Bar: Số lượng doanh nghiệp theo mức rủi ro qua từng năm
+            risk_trend = df_filtered.groupby(['Year', 'risk_level']).size().reset_index(name='Count')
+            color_map = {'HighRisk': '#ef4444', 'MediumRisk': '#f59e0b', 'LowRisk': '#10b981', 'Safe': '#3b82f6'}
+            fig_stacked = px.bar(risk_trend, x='Year', y='Count', color='risk_level', 
+                                 title='1. Dịch Chuyển Rủi Ro Qua Các Năm', barmode='stack', color_discrete_map=color_map)
+            fig_stacked.update_xaxes(dtick=1)
+            fig_stacked.update_layout(height=380, margin=dict(l=0, r=0, t=40, b=0))
+            st.plotly_chart(fig_stacked, use_container_width=True)
+
+        with r1_c2:
+            # Histogram: Phổ điểm gian lận
+            fig_hist = px.histogram(df_filtered, x='fraud_score', color='risk_level', nbins=40, 
+                                    title='2. Phân Phối Điểm Gian Lận Toàn Ngành', marginal='box', color_discrete_map=color_map)
+            fig_hist.update_layout(height=380, margin=dict(l=0, r=0, t=40, b=0))
+            st.plotly_chart(fig_hist, use_container_width=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # --- HÀNG 2: Treemap Doanh Thu & Scatter Dòng tiền vs Lợi Nhuận ---
+        r2_c1, r2_c2 = st.columns(2)
+        with r2_c1:
+            # Treemap: Bản đồ nhiệt Doanh thu và Điểm rủi ro (Top 50 cty)
+            top_rev = df_filtered.groupby('Symbol')[['Rev', 'fraud_score']].mean().reset_index()
+            top_rev = top_rev.sort_values('Rev', ascending=False).head(40)
+            top_rev['Rev_Plot'] = top_rev['Rev'].apply(lambda x: x if x > 0 else 0) # Tránh số âm trong treemap
+            fig_tree = px.treemap(top_rev, path=[px.Constant("Toàn Ngành"), 'Symbol'], values='Rev_Plot', color='fraud_score', 
+                                  color_continuous_scale='RdYlGn_r', title='3. Top 40 Cty Có Doanh Thu Lớn Nhất (Màu: Điểm Rủi Ro)')
+            fig_tree.update_layout(height=400, margin=dict(l=0, r=0, t=40, b=0))
+            st.plotly_chart(fig_tree, use_container_width=True)
+
+        with r2_c2:
+            # Scatter: Chất lượng lợi nhuận (Net Profit vs Operating Cash Flow)
+            fig_scatter_ocf = px.scatter(df_filtered, x='Net_Profit', y='Operating_Cash_Flow', color='risk_level', 
+                                         hover_name='Symbol', size='Total_Assets', color_discrete_map=color_map,
+                                         title='4. Chất Lượng Lợi Nhuận: Lợi Nhuận Thuần vs Dòng Tiền HĐKD')
+            fig_scatter_ocf.add_shape(type="line", x0=df_filtered['Net_Profit'].min(), y0=df_filtered['Net_Profit'].min(), 
+                                      x1=df_filtered['Net_Profit'].max(), y1=df_filtered['Net_Profit'].max(), 
+                                      line=dict(color="Gray", dash="dash")) # Đường y=x để tham chiếu
+            fig_scatter_ocf.update_layout(height=400, margin=dict(l=0, r=0, t=40, b=0))
+            st.plotly_chart(fig_scatter_ocf, use_container_width=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # --- HÀNG 3: Doanh thu vs Giá vốn & Cấu trúc Tỷ lệ Kế toán ---
+        r3_c1, r3_c2 = st.columns(2)
+        with r3_c1:
+            # So sánh Doanh thu và Giá vốn hàng bán (COGS) tổng hợp toàn ngành
+            if 'COGS' in df_filtered.columns:
+                rev_cogs = df_filtered.groupby('Year')[['Rev', 'COGS']].sum().reset_index()
+                fig_rev_cogs = go.Figure()
+                fig_rev_cogs.add_trace(go.Bar(x=rev_cogs['Year'], y=rev_cogs['Rev'], name='Tổng Doanh Thu', marker_color='#3b82f6'))
+                fig_rev_cogs.add_trace(go.Bar(x=rev_cogs['Year'], y=rev_cogs['COGS'], name='Tổng Giá Vốn (COGS)', marker_color='#ef4444'))
+                fig_rev_cogs.update_layout(title='5. Doanh Thu vs Giá Vốn (Toàn Ngành)', barmode='group', xaxis=dict(dtick=1), height=380, margin=dict(l=0, r=0, t=40, b=0))
+                st.plotly_chart(fig_rev_cogs, use_container_width=True)
+            else:
+                st.info("Không có cột COGS (Giá vốn) để vẽ biểu đồ này.")
+
+        with r3_c2:
+            # Boxplot: Đánh giá tỷ lệ dồn tích (Accrual Ratio) - Một chỉ báo quan trọng của thao túng lợi nhuận
+            if 'accrual_ratio' in df_filtered.columns:
+                fig_accrual = px.box(df_filtered, x='risk_level', y='accrual_ratio', color='risk_level', 
+                                     color_discrete_map=color_map, title='6. Accrual Ratio (Tỷ lệ dồn tích) Theo Nhóm Rủi Ro')
+                fig_accrual.update_layout(height=380, margin=dict(l=0, r=0, t=40, b=0))
+                st.plotly_chart(fig_accrual, use_container_width=True)
+            else:
+                st.info("Không có cột accrual_ratio để vẽ biểu đồ này.")
